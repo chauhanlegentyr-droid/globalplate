@@ -7,7 +7,6 @@ from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
 
-# Point directly to root repository folder context for unified browser file reading
 templates = Jinja2Templates(directory=".")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -20,22 +19,18 @@ async def read_root(request: Request):
 async def culinary_stream(request: Request):
     body = await request.json()
     user_dish = body.get("message", "")
-    feature_type = body.get("feature", "recipe") # Read multi-feature route variables dynamically
     
-    # Establish dynamic agent system prompt profiles based on user interface clicks
-    if feature_type == "history":
-        system_prompt = f"You are the GlobalPlate Culture Agent. Detail the exact historical origin, ancient traditions, and deep cultural evolution of: '{user_dish}'. Avoid printing recipes here."
-    elif feature_type == "nutrition":
-        system_prompt = f"You are the GlobalPlate Nutrition Agent. Detail the estimated macro breakdown (Protein, Carbs, Fats) and holistic health benefits of standard: '{user_dish}'."
-    else:
-        system_prompt = (
-            f"You are the GlobalPlate Head Master Chef Agent. For '{user_dish}', provide a clear response containing:\n"
-            f"1. 📝 TRADITIONAL RECIPE: Organized ingredients using dual metrics (imperial & metric).\n"
-            f"2. 🍳 COOKING INSTRUCTIONS: Chronological preparation steps.\n"
-            f"3. 💡 INSIDER CHEF TRICK: A deep secret to make it authentic."
-        )
+    # Overhauled omni-prompt telling the agent to return everything inside a unified master report
+    system_prompt = (
+        f"You are the GlobalPlate Omniscient Culinary AI Agent. The user wants to learn everything about the dish or ingredients: '{user_dish}'. "
+        f"Provide an incredibly detailed, comprehensive master layout structured exactly like this:\n\n"
+        f"🌍 1. CULTURAL HISTORY & ORIGIN: Detail the deep history, cultural background, and interesting origin facts of this dish.\n\n"
+        f"⏱️ 2. PREPARATION METRICS (COOKING TIME): State the exact approximate Prep Time, Cooking Time, and Total Time required.\n\n"
+        f"📝 3. TRADITIONAL INGREDIENTS LIST: Provide a clean checklist of all ingredients needed using dual measurements (both metric and imperial units).\n\n"
+        f"🍳 4. STEP-BY-STEP PREPARATION GUIDE: Provide clear, chronological, and highly descriptive cooking instructions to make this dish perfectly.\n\n"
+        f"💡 5. SECRET CHEF TRICK: Share one elite culinary insider secret that restaurants use to make this dish taste authentic."
+    )
 
-    # Reconfigured robust payload structure matching standard Google API gateway models
     payload = {
         "contents": [{"parts": [{"text": system_prompt}]}]
     }
@@ -43,16 +38,14 @@ async def culinary_stream(request: Request):
     url = f"https://googleapis.com{GEMINI_API_KEY}"
 
     async def event_generator():
-        # Using structured text/event-stream chunks to bypass proxy buffer blocking
         async with httpx.AsyncClient(http2=True) as client:
             try:
-                async with client.stream("POST", url, json=payload, timeout=30.0) as response:
+                async with client.stream("POST", url, json=payload, timeout=40.0) as response:
                     async for line in response.aiter_lines():
                         if not line:
                             continue
                         clean_line = line.strip()
                         
-                        # Process array boundary strings
                         if clean_line.startswith("[") or clean_line.startswith(","):
                             clean_line = clean_line[1:]
                         if clean_line.endswith("]") or clean_line.endswith(","):
@@ -63,11 +56,10 @@ async def culinary_stream(request: Request):
                             parts = chunk_data["candidates"]["content"]["parts"]
                             text_chunk = "".join([part.get("text", "") for part in parts])
                             if text_chunk:
-                                # Standard unified format wrapping strings inside clean JSON structures
                                 yield f"data: {json.dumps({'text': text_chunk})}\n\n"
                         except Exception:
                             pass
             except Exception as e:
-                yield f"data: {json.dumps({'text': f'❌ Cloud Pipeline Exception: {str(e)}'})}\n\n"
+                yield f"data: {json.dumps({'text': f'❌ Cloud Pipeline Error: {str(e)}'})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
