@@ -60,7 +60,7 @@ async def culinary_stream(request: Request):
                         
                         try:
                             chunk_data = json.loads(clean_line)
-                            parts = chunk_data["candidates"][0]["content"]["parts"]
+                            parts = chunk_data["candidates"]["content"]["parts"]
                             text_chunk = "".join([part.get("text", "") for part in parts])
                             if text_chunk:
                                 # Standard unified format wrapping strings inside clean JSON structures
@@ -71,4 +71,3 @@ async def culinary_stream(request: Request):
                 yield f"data: {json.dumps({'text': f'❌ Cloud Pipeline Exception: {str(e)}'})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
-"text/event-stream")
