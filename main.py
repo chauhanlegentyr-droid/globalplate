@@ -1,19 +1,16 @@
 import os
-import json
 import httpx
+import json
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 from fastapi.templating import Jinja2Templates
 
 app = FastAPI()
 
-# Setting up templates directory to read our HTML user interface
+# Point directly to root repository folder context for unified browser file reading
 templates = Jinja2Templates(directory=".")
 
-
-# Pull the Google AI Studio API key securely from environment variables
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_URL = f"https://googleapis.com{GEMINI_API_KEY}"
 
 @app.get("/")
 async def read_root(request: Request):
@@ -23,43 +20,55 @@ async def read_root(request: Request):
 async def culinary_stream(request: Request):
     body = await request.json()
     user_dish = body.get("message", "")
+    feature_type = body.get("feature", "recipe") # Read multi-feature route variables dynamically
+    
+    # Establish dynamic agent system prompt profiles based on user interface clicks
+    if feature_type == "history":
+        system_prompt = f"You are the GlobalPlate Culture Agent. Detail the exact historical origin, ancient traditions, and deep cultural evolution of: '{user_dish}'. Avoid printing recipes here."
+    elif feature_type == "nutrition":
+        system_prompt = f"You are the GlobalPlate Nutrition Agent. Detail the estimated macro breakdown (Protein, Carbs, Fats) and holistic health benefits of standard: '{user_dish}'."
+    else:
+        system_prompt = (
+            f"You are the GlobalPlate Head Master Chef Agent. For '{user_dish}', provide a clear response containing:\n"
+            f"1. 📝 TRADITIONAL RECIPE: Organized ingredients using dual metrics (imperial & metric).\n"
+            f"2. 🍳 COOKING INSTRUCTIONS: Chronological preparation steps.\n"
+            f"3. 💡 INSIDER CHEF TRICK: A deep secret to make it authentic."
+        )
 
-    # The System Prompt forces the AI to strictly stay in character as GlobalPlate
+    # Reconfigured robust payload structure matching standard Google API gateway models
     payload = {
-        "contents": [{
-            "parts": [{
-                "text": (
-                    f"You are GlobalPlate, an elite international chef and cultural culinary historian. "
-                    f"The user wants to explore this dish or ingredient: '{user_dish}'. "
-                    f"Provide your response in exactly this structure:\n"
-                    f"1. 🌍 CULTURAL PROFILE: Explain where this dish originates and its cultural significance.\n"
-                    f"2. 📝 THE TRADITIONAL RECIPE: List exact ingredients (provide dual units: metric and imperial).\n"
-                    f"3. 🍳 STEP-BY-STEP COOKING GUIDE: Stream clear, chronological instructions.\n"
-                    f"4. 💡 CULINARY TRICK: Share one authentic insider secret to making this dish taste genuinely traditional."
-                )
-            }]
-        }]
+        "contents": [{"parts": [{"text": system_prompt}]}]
     }
+    
+    url = f"https://googleapis.com{GEMINI_API_KEY}"
 
     async def event_generator():
-        async with httpx.AsyncClient() as client:
-            async with client.stream("POST", GEMINI_URL, json=payload, timeout=60.0) as response:
-                async for line in response.aiter_lines():
-                    if not line:
-                        continue
-                    clean_line = line.strip()
-
-                    # Clean up trailing braces/brackets from the raw chunks
-                    if clean_line.startswith("[") or clean_line.startswith(","):
-                        clean_line = clean_line[1:]
-                    if clean_line.endswith("]") or clean_line.endswith(","):
-                        clean_line = clean_line[:-1]
-
-                    try:
-                        chunk_data = json.loads(clean_line)
-                        text_chunk = chunk_data["candidates"][0]["content"]["parts"][0]["text"]
-                        yield f"data: {json.dumps({'text': text_chunk})}\n\n"
-                    except Exception:
-                        pass
+        # Using structured text/event-stream chunks to bypass proxy buffer blocking
+        async with httpx.AsyncClient(http2=True) as client:
+            try:
+                async with client.stream("POST", url, json=payload, timeout=30.0) as response:
+                    async for line in response.aiter_lines():
+                        if not line:
+                            continue
+                        clean_line = line.strip()
+                        
+                        # Process array boundary strings
+                        if clean_line.startswith("[") or clean_line.startswith(","):
+                            clean_line = clean_line[1:]
+                        if clean_line.endswith("]") or clean_line.endswith(","):
+                            clean_line = clean_line[:-1]
+                        
+                        try:
+                            chunk_data = json.loads(clean_line)
+                            parts = chunk_data["candidates"][0]["content"]["parts"]
+                            text_chunk = "".join([part.get("text", "") for part in parts])
+                            if text_chunk:
+                                # Standard unified format wrapping strings inside clean JSON structures
+                                yield f"data: {json.dumps({'text': text_chunk})}\n\n"
+                        except Exception:
+                            pass
+            except Exception as e:
+                yield f"data: {json.dumps({'text': f'❌ Cloud Pipeline Exception: {str(e)}'})}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+"text/event-stream")
