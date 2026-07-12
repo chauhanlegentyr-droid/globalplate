@@ -8,7 +8,8 @@ from fastapi.templating import Jinja2Templates
 app = FastAPI()
 
 # Setting up templates directory to read our HTML user interface
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(directory=".")
+
 
 # Pull the Google AI Studio API key securely from environment variables
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
