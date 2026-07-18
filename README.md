@@ -1,51 +1,65 @@
-# GlobalPlate AI
+GlobalPlate AI
 
-GlobalPlate AI is an AI-powered international culinary assistant created for the IBM Gen AI & Cloud Computing internship project.
+GlobalPlate AI is an AI-powered international culinary assistant designed to help users discover recipes, explore dishes, and interact with an AI cooking assistant.
 
-## Features
+Features
 
-- Live Gemini-powered recipe generation
-- Streaming AI responses
-- Multi-turn conversation memory
-- Saved dish conversations in browser storage
-- Dynamic dish images using Pexels
-- Nutrition summary card
-- Ingredient checklist
-- Voice input where supported
-- Copy, download and print/PDF tools
-- Dark mode and responsive design
-- Docker-ready FastAPI deployment
-- Health and API information endpoints
+Live Gemini-powered recipe generation
 
-## Local setup
+Streaming AI responses
 
-1. Copy `.env.example` to `.env`.
-2. Add your Gemini and Pexels API keys.
-3. Install dependencies:
+Multi-turn conversation memory
 
-```bash
+Saved dish conversations in browser storage
+
+Dynamic dish images using Pexels
+
+Nutrition summary card
+
+Ingredient checklist
+
+Voice input where supported
+
+Copy, download, and print/PDF tools
+
+Dark mode and responsive design
+
+Docker-ready FastAPI deployment
+
+Health and API information endpoints
+
+Local Setup
+
+Copy .env.example to .env.
+
+Add your Gemini and Pexels API keys.
+
+Install dependencies:
+
 py -m pip install -r requirements.txt
-```
 
-4. Run:
 
-```bash
+Run the application:
+
 py -m uvicorn main:app --reload
-```
 
-5. Open `http://127.0.0.1:8000`.
 
-## Useful endpoints
+Open http://127.0.0.1:8000 in your browser.
 
-- `/` — web application
-- `/health` — deployment health check
-- `/api/info` — public project information
-- `/docs` — FastAPI documentation
+Useful Endpoints
 
-## Security
+/ — Web application
 
-Never commit `.env` or API keys to GitHub.
+/health — Deployment health check
 
-## Developer
+/api/info — Public project information
 
-Developed by **Nirbhaysingh A. Chauhan**.
+/docs — FastAPI documentation
+
+Security
+
+Never commit .env files or API keys to GitHub.
+
+Developer
+
+Developed by Nirbhaysingh A. Chauhan.
